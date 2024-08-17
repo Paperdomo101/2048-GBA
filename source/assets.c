@@ -19,6 +19,7 @@ void LoadAssets(void) {
     assets.sfx.small_merge = (mm_sound_effect) { .id = SFX_SMALL_MERGE, .rate = (int)(1.0f * (1 << 10)), .volume = 255, .panning = 127};
     assets.sfx.merge = (mm_sound_effect) { .id = SFX_MERGE, .rate = (int)(1.0f * (1 << 10)), .volume = 255, .panning = 127};
     assets.sfx.big_merge = (mm_sound_effect) { .id = SFX_BIG_MERGE, .rate = (int)(1.0f * (1 << 10)), .volume = 255, .panning = 127};
+    assets.sfx.save  = (mm_sound_effect) { .id = SFX_SAVE,  .rate = (int)(1.0f * (1 << 10)), .volume = 255, .panning = 127};
     assets.sfx.lose  = (mm_sound_effect) { .id = SFX_LOSE,  .rate = (int)(1.0f * (1 << 10)), .volume = 255, .panning = 127};
     assets.sfx.win  = (mm_sound_effect) { .id = SFX_WIN,  .rate = (int)(1.0f * (1 << 10)), .volume = 255, .panning = 127};
 }

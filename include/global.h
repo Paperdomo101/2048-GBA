@@ -12,6 +12,7 @@ enum Gamemodes {
     GM_FIRST = 0,
     GM_TITLE,
     GM_GAME,
+    GM_SAVE,
     GM_GAMEOVER,
     GM_WIN,
 };
@@ -26,12 +27,6 @@ enum Gamemodes {
 #define ANIM_SCORE_DURATION (32)
 
 
-typedef struct State {
-    int seed;
-    int mode;
-    u32 hiscore;
-    u32 score;
-} State;
 
 typedef struct Assets {
     struct {
@@ -41,6 +36,7 @@ typedef struct Assets {
         mm_sound_effect small_merge;
         mm_sound_effect merge;
         mm_sound_effect big_merge;
+        mm_sound_effect save;
         mm_sound_effect lose;
         mm_sound_effect win;
     } sfx;
@@ -61,7 +57,17 @@ typedef union Square {
     u8 data;
 } Square;
 
+typedef struct State {
+    int seed;
+    int mode;
+    u32 hiscore;
+    u32 score;
+    u8 saved;
+    Square squares[16];
+} State;
+
 State *GetState(void);
+void UpdateState(void);
 void SetMode(int mode);
 
 Assets *GetAssets(void);
@@ -75,6 +81,9 @@ void UpdateTitle(void);
 
 void InitOver(void);
 void UpdateOver(void);
+
+void InitSave(void);
+void UpdateSave(void);
 
 void InitWin(void);
 void UpdateWin(void);

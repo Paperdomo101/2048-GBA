@@ -70,6 +70,8 @@ void UpdateWin(void) {
             srand(state->seed);
             obj_hide(obj_you);
             obj_hide(obj_win);
+            state->saved = 0;
+            SaveState(state);
             SetMode(GM_GAME);
         }
     }

@@ -4,7 +4,6 @@
 #include "bg0.h"
 #include "score.h"
 #include "sprites.h"
-#include "tonc_bios.h"
 #include "tonc_core.h"
 #include "tonc_input.h"
 #include "tonc_irq.h"
@@ -16,6 +15,7 @@
 
 static State *state;
 static Assets *assets;
+static Square *squares;
 
 static int fade_timer = 0;
 static int fade_over = 0;
@@ -38,7 +38,7 @@ static int bg1_hofs[7] = {-13, -9, -6, -3, -1, -4, -2};
 static int digit_count, hidigit_count;
 static int first_is_1, hifirst_is_1;
 
-static Square squares[16] = {0};
+
 static u16 empty[16] = {0};
 static int empty_len;
 
@@ -73,6 +73,20 @@ static FIXED tally_anim_timer = 0;
 static u8 anim_tally_alpha[ANIM_SCORE_DURATION] = {0,0,0,0,0,1,1,1,1,2,2,3,3,4,5,6,8,9,11,12,13,15,17,19,22,24,26,27,29,29,30,31};
 static int tally_x = 204;
 
+void CalculateUsed(void) {
+    int used = 0;
+    for (int j = 0; j < 4; j++) {
+    for (int i = 0; i < 4; i++)
+    {
+        int index = i + (j << 2);
+        if (squares[index].value != 0) {
+            ++used;
+            continue;
+        }
+        empty[index - used] = index;
+    }}
+    empty_len = 16 - used;
+}
 
 void FillTallyGFX(u32 *tally_buffer, u32 tally, int digit_count, int draw_w, int tile_off) {
     int offset = 0;
@@ -212,7 +226,6 @@ void UpdateScore(void) {
 
     if (state->score > state->hiscore) {
         state->hiscore = state->score;
-        SaveState(state);
     }
 
     int tile_id = 16;
@@ -307,7 +320,6 @@ int AddRandomSquare(void) {
 int CanMove(void) {
     if (empty_len > 0) { return 1; }
 
-/// FIXME: Something's wrong here! (Not gaming over sometimes)
     for (int j = 0; j < 4; j++) {
     for (int i = 0; i < 4; i++)
     {
@@ -317,7 +329,7 @@ int CanMove(void) {
         }
 
         if (j > 0) {
-            int up = i + ((j + 1) << 2);
+            int up = i + ((j - 1) << 2);
             if (squares[index].value == squares[up].value) {
                 return 1;
             }
@@ -344,6 +356,8 @@ int CanMove(void) {
     return 0;
 };
 
+u32 tally = 0;
+
 int SlideAndMerge(u8 i0, u8 i1, u8 i2, u8 i3) {
     int success = 0;
     Square working[4] = {0};
@@ -364,8 +378,6 @@ int SlideAndMerge(u8 i0, u8 i1, u8 i2, u8 i3) {
     squares[i1].merge = 0;
     squares[i2].merge = 0;
     squares[i3].merge = 0;
-
-    u32 tally = 0;
 
     int d = 0;
     int p = 0;
@@ -414,11 +426,6 @@ int SlideAndMerge(u8 i0, u8 i1, u8 i2, u8 i3) {
         success = 1;
     }
 
-    if (play_merge_sound && tally > 0) {
-        SpawnScoreParticle(tally);
-
-        state->score += tally;
-    }
 
     return success;
 }
@@ -426,6 +433,7 @@ int SlideAndMerge(u8 i0, u8 i1, u8 i2, u8 i3) {
 
 int Slide(enum Directions direction) {
     int success = 0;
+    tally = 0;
 
     if (input_delay > 0) {
         return success;
@@ -462,18 +470,13 @@ int Slide(enum Directions direction) {
     } break;
     };
 
-    int used = 0;
-    for (int j = 0; j < 4; j++) {
-    for (int i = 0; i < 4; i++)
-    {
-        int index = i + (j << 2);
-        if (squares[index].value != 0) {
-            ++used;
-            continue;
-        }
-        empty[index - used] = index;
-    }}
-    empty_len = 16 - used;
+    if (play_merge_sound && tally > 0) {
+        SpawnScoreParticle(tally);
+
+        state->score += tally;
+    }
+
+    CalculateUsed();
 
     if (success) {
         play_slide_sound = 1;
@@ -514,6 +517,7 @@ void UpdateSquares(void) {
             you_win = 1;
         }
     }
+    state->saved = 1;
 }
 
 void AnimateSquares(void) {
@@ -606,11 +610,11 @@ void InitGame(void) {
     state = GetState();
     assets = GetAssets();
 
-    LoadState(state);
-
+    squares = state->squares;
 
     BFN_SET(REG_DISPSTAT, 36, DSTAT_VCT);
-    irq_add(II_VCOUNT, HiScoreBG1HOffset);
+
+    irq_set(II_VCOUNT, HiScoreBG1HOffset, 1);
 
     fade_over = 0;
     fade_timer = GAME_FADE_DURATION;
@@ -636,7 +640,12 @@ void InitGame(void) {
 
     key_repeat_limits(20, 55555);
 
-    StartGame();
+    if (state->saved) {
+        UpdateScore();
+        UpdateSquares();
+    } else {
+        StartGame();
+    }
 
 }
 
@@ -647,7 +656,7 @@ void StartGame(void) {
     new_game_timer = 0;
 
     empty_len = 0;
-    srand(rand()+squares[1].value+squares[2].value+squares[4].value+squares[5].value+squares[7].value+squares[9].value+squares[12].value+squares[13].value + state->score);
+    srand(rand()+state->squares[1].value+state->squares[2].value+state->squares[4].value+state->squares[5].value+state->squares[7].value+state->squares[9].value+state->squares[12].value+state->squares[13].value + state->score);
 
     for (int i = 0; i < 16; i+=4)   // Reset arrays
     {
@@ -681,22 +690,19 @@ void StartGame(void) {
 
 void UpdateGame(void) {
 
-    vid_vsync();
     UpdateScore();
     UpdateScoreParticle();
 
+    vid_vsync();
     if (fade_timer > 0) {
         clr_blend_fast(&pal_bg_mem[0], (COLOR *)bg0Pal, &pal_bg_mem[0], 256, (GAME_FADE_DURATION - fade_timer) >> 1);
         clr_blend_fast(&pal_obj_mem[0], (COLOR *)spritesPal, &pal_obj_mem[0], 256, (GAME_FADE_DURATION - fade_timer) >> 1);
         --fade_timer;
-        if (fade_timer == 0) {
+        if (fade_timer == 0 && !fade_over) {
             fade_over = 1;
             memcpy(pal_bg_mem, bg0Pal, bg0PalLen);
             memcpy(pal_obj_mem, spritesPal, spritesPalLen);
         }
-    }
-    if (!fade_over) {
-        return;
     }
 
 
@@ -712,17 +718,32 @@ void UpdateGame(void) {
     }
 
 
+
     if (key_hit(KEY_SELECT)) {
         pal_bg_mem[22] = pal_bg_mem[24];
         pal_bg_mem[23] = pal_bg_mem[25];
         StartGame();
     }
-    if (key_is_up(KEY_SELECT)) {
-        memcpy(pal_bg_mem, bg0Pal, bg0PalLen);
+    if (key_released(KEY_SELECT)) {
+        pal_bg_mem[22] = pal_bg_mem[5];
+        pal_bg_mem[23] = pal_bg_mem[5];
+        state->saved = 0;
+        SaveState(state);
     }
 
-    if (!key_repeat(KEY_DIR)) {
+    if (key_hit(KEY_START)) {
+        pal_bg_mem[38] = pal_bg_mem[40];
+        pal_bg_mem[39] = pal_bg_mem[41];
+        SetMode(GM_SAVE);
+    }
+    if (key_released(KEY_START)) {
+        pal_bg_mem[38] = pal_bg_mem[5];
+        pal_bg_mem[39] = pal_bg_mem[5];
+    }
+
+    if (key_released(KEY_DIR)) {
         last_dir = 0;
+        CalculateUsed();
     }
 
     if (key_repeat(KEY_UP)) {

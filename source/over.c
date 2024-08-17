@@ -28,7 +28,6 @@ void InitOver(void) {
     REG_BG1VOFS = GetDigitCount(0) < 5 ? -3 : -4;
     REG_BG1HOFS = GetBG1Off(0) + GetFirstIs1(0);
 
-
     memcpy(&tile_mem[4][256], gameoverTiles, gameoverTilesLen);
 
     obj_copy(obj_mem+2, obj_mem, 16); // 16 number tiles
@@ -70,6 +69,10 @@ void UpdateOver(void) {
             srand(state->seed);
             obj_hide(obj_game);
             obj_hide(obj_over);
+            memset16(pal_bg_mem, pal_bg_mem[5], 256);
+            memset16(pal_obj_mem, pal_bg_mem[5], 256);
+            state->saved = 0;
+            SaveState(state);
             SetMode(GM_GAME);
         }
     }

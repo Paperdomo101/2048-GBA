@@ -14,30 +14,13 @@ int main(void) {
 
     LoadAssets();
 
+    LoadState(state);
+
     SetMode(GM_FIRST);
 
     while(1) {
         mmFrame();
-        switch (state->mode)
-        {
-        case GM_FIRST:
-            UpdateFirst();
-            break;
-        case GM_TITLE:
-            UpdateTitle();
-            break;
-        case GM_GAME:
-            UpdateGame();
-            break;
-        case GM_GAMEOVER:
-            UpdateOver();
-            break;
-        case GM_WIN:
-            UpdateWin();
-            break;
-        default:
-            break;
-        }
+        UpdateState();
     }
 
     return 0;
