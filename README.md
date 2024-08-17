@@ -4,7 +4,7 @@
 
 ### Changelog
 
-#### v1
+#### v1.1
 + Implemented saving: press start to save and the game will resume where you left off.
 * Fixed score tallying
 * Fixed error in gameover check
