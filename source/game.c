@@ -69,6 +69,20 @@ static FIXED tally_anim_timer = 0;
 static u8 anim_tally_alpha[ANIM_SCORE_DURATION] = {0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 4, 5, 6, 8, 9, 11, 12, 13, 15, 17, 19, 22, 24, 26, 27, 29, 29, 30, 31};
 static int tally_x = 204;
 
+void PlayMergeSound(int which) {
+    if(which == 3) {
+        mmEffect(SFX_BIG_MERGE);
+        return;
+    } else if(which == 2) {
+        mmEffect(SFX_MERGE);
+        return;
+    }
+
+    // change pitch a bit
+    mm_sfxhand handle = mmEffect(SFX_SMALL_MERGE);
+    mmEffectScaleRate(handle, rand() % 400 + 824);
+}
+
 void CalculateUsed() {
     int used = 0;
     for (int j = 0; j < 4; j++) {
@@ -794,7 +808,7 @@ static void UpdateGame() {
     }
 
     if (play_merge_sound) {
-        mmEffect(play_merge_sound == 3 ? SFX_BIG_MERGE : play_merge_sound == 2 ? SFX_MERGE : SFX_SMALL_MERGE);
+        PlayMergeSound(play_merge_sound);
         play_merge_sound = 0;
     }
     if (play_slide_sound) {

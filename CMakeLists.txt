@@ -62,25 +62,35 @@ mm_add_soundbank_target(soundbank
 		audio/spawn.wav
 		audio/start.wav
 		audio/win.wav)
-target_include_directories(2048 PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 dkp_add_embedded_binary_library(2048-sounds soundbank)
+target_include_directories(2048-sounds INTERFACE "${CMAKE_CURRENT_BINARY_DIR}")
 
 # libs
 add_library(maxmod STATIC IMPORTED)
 set_target_properties(maxmod PROPERTIES
 	INTERFACE_INCLUDE_DIRECTORIES "$ENV{DEVKITPRO}/libgba/include"
 	IMPORTED_LOCATION "$ENV{DEVKITPRO}/libgba/lib/libmm.a")
-target_link_libraries(2048 PRIVATE
-	2048-graphics 2048-sounds maxmod)
+target_link_libraries(2048 PRIVATE 2048-graphics 2048-sounds maxmod)
 
 # debug
 dkp_target_generate_symbol_list(2048)
 
 # rom
-gba_create_rom(2048
-	TITLE "2048 GBA"
-	GAMECODE "2048"
-	MAKERCODE "BT")
+option(MULTIBOOT "Create Multiboot ROM instead of GamePak" OFF)
+if(MULTIBOOT)
+	gba_create_rom(2048
+		MULTIBOOT
+		OUTPUT 2048_mb.gba
+		TITLE "2048 GBA MB"
+		GAMECODE "2048"
+		MAKERCODE "BT")
+else()
+	gba_create_rom(2048
+		OUTPUT 2048.gba
+		TITLE "2048 GBA"
+		GAMECODE "2048"
+		MAKERCODE "BT")
+endif()
 
 # source code formatting
 if(NOT ASTYLE_FOUND)
