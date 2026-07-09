@@ -64,6 +64,7 @@ static u8 anim_slide[3][ANIM_SLIDE_DURATION] = {
     { 34, 63, 90, 105, 108 },
 };
 
+static int tally_active = 0;
 static FIXED tally_anim_timer = 0;
 static u8 anim_tally_alpha[ANIM_SCORE_DURATION] = {0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 4, 5, 6, 8, 9, 11, 12, 13, 15, 17, 19, 22, 24, 26, 27, 29, 29, 30, 31};
 static int tally_x = 204;
@@ -134,14 +135,17 @@ void SpawnScoreParticle(u32 tally) {
     obj_set_pos(&obj_buffer[18], tally_x, 20);
     obj_copy(obj_mem+18, &obj_buffer[18], 1);
     tally_anim_timer = 0;
-
+    tally_active = 1;
 }
 
 void UpdateScoreParticle() {
+    if (!tally_active) return;
+
     if (tally_anim_timer >> 8 >= ANIM_SCORE_DURATION) {
-        tally_anim_timer = 0;
+        tally_active = 0;
         obj_hide(&obj_buffer[18]);
     }
+
     obj_set_pos(&obj_buffer[18], tally_x, 20 - (tally_anim_timer >> 8));
     obj_copy(obj_mem+18, &obj_buffer[18], 1);
     tally_anim_timer += 280;
