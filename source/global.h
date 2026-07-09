@@ -3,14 +3,16 @@
 #include <tonc.h>
 #include <maxmod.h>
 
-enum Gamemodes {
+#include "soundbank.h"
+
+typedef enum {
     GM_FIRST = 0,
     GM_TITLE,
     GM_GAME,
     GM_SAVE,
     GM_GAMEOVER,
     GM_WIN,
-};
+} Gamemodes;
 
 #define FIRST_FADE_DURATION (20)
 #define TITLE_FADE_DURATION (15)
@@ -21,28 +23,14 @@ enum Gamemodes {
 #define ANIM_MERGE_DURATION (9)
 #define ANIM_SCORE_DURATION (32)
 
+#define KEY_RETURN (KEY_A | KEY_B | KEY_START | KEY_SELECT)
 
-
-typedef struct Assets {
-    struct {
-        mm_sound_effect start;
-        mm_sound_effect spawn;
-        mm_sound_effect slide;
-        mm_sound_effect small_merge;
-        mm_sound_effect merge;
-        mm_sound_effect big_merge;
-        mm_sound_effect save;
-        mm_sound_effect lose;
-        mm_sound_effect win;
-    } sfx;
-} Assets;
-
-typedef struct vec2i {
+typedef struct {
     int x : 16;
     int y : 16;
 } vec2i;
 
-typedef union Square {
+typedef union {
     struct {
         u8 shift : 2;
         u8 merge : 1;
@@ -52,43 +40,28 @@ typedef union Square {
     u8 data;
 } Square;
 
-typedef struct State {
+typedef struct {
     int seed;
     int mode;
+    void (*update)();
     u32 hiscore;
     u32 score;
     u8 saved;
     Square squares[16];
 } State;
 
-State *GetState(void);
-void UpdateState(void);
+State *GetState();
 void SetMode(int mode);
-
-Assets *GetAssets(void);
-void LoadAssets(void);
-
-void InitFirst(void);
-void UpdateFirst(void);
-
-void InitTitle(void);
-void UpdateTitle(void);
-
-void InitOver(void);
-void UpdateOver(void);
-
-void InitSave(void);
-void UpdateSave(void);
-
-void InitWin(void);
-void UpdateWin(void);
-
-void InitGame(void);
-void StartGame(void);
-void UpdateGame(void);
 
 void LoadState(State *state);
 void SaveState(State *state);
+
+void InitFirst();
+void InitTitle();
+void InitOver();
+void InitSave();
+void InitWin();
+void InitGame();
 
 int GetBG1Off(int hi);
 int GetFirstIs1(int hi);

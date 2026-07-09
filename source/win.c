@@ -6,41 +6,17 @@
 #include "youwin_gfx.h"
 
 static State *state;
-static Assets *assets;
 
 static int fade_timer = 0;
 static int fade_over = 0;
 
-static OBJ_ATTR obj_buffer[2];
+static OBJ_ATTR obj_buffer[18];
 
 static OBJ_ATTR *obj_you = &obj_buffer[0];
 static OBJ_ATTR *obj_win = &obj_buffer[1];
 
-void InitWin(void) {
-    state = GetState();
-    assets = GetAssets();
-    fade_over = 0;
-    fade_timer = 30;
-    REG_BG1VOFS = GetDigitCount(0) < 5 ? -3 : -4;
-    REG_BG1HOFS = GetBG1Off(0) + GetFirstIs1(0);
-
-
-    memcpy(&tile_mem[4][256], youwin_gfx, youwin_gfx_size);
-
-    obj_copy(obj_mem+2, obj_mem, 16); // 16 number tiles
-    obj_you = &obj_buffer[0];
-    obj_win = &obj_buffer[1];
-
-    obj_hide(obj_you);
-    obj_hide(obj_win);
-
-    mmEffectEx(&assets->sfx.win);
-}
-
-void UpdateWin(void) {
+static void UpdateWin() {
     state->seed += rand() << 1;
-    vid_vsync();
-    key_poll();
 
     REG_BG1VOFS = GetDigitCount(0) < 5 ? -3 : -4;
     REG_BG1HOFS = GetBG1Off(0) + GetFirstIs1(0);
@@ -61,15 +37,36 @@ void UpdateWin(void) {
     }
 
     if (fade_over) {
-        if (key_hit(KEY_SELECT)) {
+        if (key_hit(KEY_RETURN)) {
             srand(state->seed);
             obj_hide(obj_you);
             obj_hide(obj_win);
             state->saved = 0;
             SaveState(state);
             SetMode(GM_GAME);
+            return;
         }
     }
 
-    obj_copy(obj_mem, obj_buffer, 2);
+    obj_copy(obj_mem, obj_buffer, 18);
+}
+
+void InitWin() {
+    state = GetState();
+    state->update = UpdateWin;
+    fade_over = 0;
+    fade_timer = 30;
+    REG_BG1VOFS = GetDigitCount(0) < 5 ? -3 : -4;
+    REG_BG1HOFS = GetBG1Off(0) + GetFirstIs1(0);
+
+    memcpy(&tile_mem[4][256], youwin_gfx, youwin_gfx_size);
+
+    obj_copy(obj_buffer+2, obj_mem, 16); // 16 number tiles
+    obj_you = &obj_buffer[0];
+    obj_win = &obj_buffer[1];
+
+    obj_hide(obj_you);
+    obj_hide(obj_win);
+
+    mmEffect(SFX_WIN);
 }

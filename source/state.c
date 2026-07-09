@@ -30,32 +30,6 @@ void SetMode(int mode) {
     }
 }
 
-void UpdateState(void) {
-    switch (state.mode)
-    {
-    case GM_FIRST:
-        UpdateFirst();
-        break;
-    case GM_TITLE:
-        UpdateTitle();
-        break;
-    case GM_GAME:
-        UpdateGame();
-        break;
-    case GM_SAVE:
-        UpdateSave();
-        break;
-    case GM_GAMEOVER:
-        UpdateOver();
-        break;
-    case GM_WIN:
-        UpdateWin();
-        break;
-    default:
-        break;
-    }
-}
-
 State *GetState() {
     return &state;
 }

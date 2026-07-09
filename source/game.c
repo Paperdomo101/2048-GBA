@@ -11,7 +11,6 @@
 #include "sprites_pal.h"
 
 static State *state;
-static Assets *assets;
 static Square *squares;
 
 static int fade_timer = 0;
@@ -70,7 +69,7 @@ static FIXED tally_anim_timer = 0;
 static u8 anim_tally_alpha[ANIM_SCORE_DURATION] = {0,0,0,0,0,1,1,1,1,2,2,3,3,4,5,6,8,9,11,12,13,15,17,19,22,24,26,27,29,29,30,31};
 static int tally_x = 204;
 
-void CalculateUsed(void) {
+void CalculateUsed() {
     int used = 0;
     for (int j = 0; j < 4; j++) {
     for (int i = 0; i < 4; i++)
@@ -133,7 +132,7 @@ void SpawnScoreParticle(u32 tally) {
 
 }
 
-void UpdateScoreParticle(void) {
+void UpdateScoreParticle() {
     if (tally_anim_timer >> 8 >= ANIM_SCORE_DURATION) {
         tally_anim_timer = 0;
         obj_hide(&obj_buffer[18]);
@@ -195,7 +194,7 @@ void FillScoreGFX(u32 *score_buffer, u32 *score_buffer_l, int score, int digit_c
 }
 
 
-void ResetScore(void) {
+void ResetScore() {
     state->score = 0;
 
     memset32(&tile_mem[1][48], 0, 4 * 8);
@@ -214,13 +213,12 @@ int GetBG1Off(int hi) {
     return bg1_hofs[(hi ? hidigit_count : digit_count) - 1];
 }
 
-void HiScoreBG1HOffset(void) {
+void HiScoreBG1HOffset() {
     REG_BG1VOFS = hidigit_count < 5 ? -3 : -4;
     REG_BG1HOFS = bg1_hofs[hidigit_count-1] + GetFirstIs1(1);
 }
 
-void UpdateScore(void) {
-
+void UpdateScore() {
     if (state->score > state->hiscore) {
         state->hiscore = state->score;
     }
@@ -286,7 +284,7 @@ void SetSquare(u8 index, Square square) {
     }
 }
 
-int AddRandomSquare(void) {
+int AddRandomSquare() {
     if (empty_len <= 0) {
         return 0;
     }
@@ -314,7 +312,7 @@ int AddRandomSquare(void) {
     return 1;
 }
 
-int CanMove(void) {
+int CanMove() {
     if (empty_len > 0) { return 1; }
 
     for (int j = 0; j < 4; j++) {
@@ -490,7 +488,7 @@ int Slide(enum Directions direction) {
     return success;
 }
 
-void UpdateSquares(void) {
+void UpdateSquares() {
     for (int i = 0; i < 16; ++i)
     {
         obj_hide(&obj_buffer[i]);
@@ -517,8 +515,7 @@ void UpdateSquares(void) {
     state->saved = 1;
 }
 
-void AnimateSquares(void) {
-
+void AnimateSquares() {
     if (anim_frame >= anim_duration) {
         for (int i = 0; i < 16; i++)
         {
@@ -600,54 +597,7 @@ void AnimateSquares(void) {
     }
 }
 
-
-
-
-void InitGame(void) {
-    state = GetState();
-    assets = GetAssets();
-
-    squares = state->squares;
-
-    BFN_SET(REG_DISPSTAT, 36, DSTAT_VCT);
-
-    irq_set(II_VCOUNT, HiScoreBG1HOffset, 1);
-
-    fade_over = 0;
-    fade_timer = GAME_FADE_DURATION;
-
-	memcpy(&tile_mem[0][0], bg0_gfx, bg0_gfx_size);
-	memcpy(&se_mem[30][0], bg0_map, bg0_map_size);
-
-	memcpy(&tile_mem[1][0], score_gfx, score_gfx_size);
-
-	memcpy16(&se_mem[31][89], runtimeScoreTileIDs, 4);
-	memcpy16(&se_mem[31][89+32], runtimeScoreTileIDsL, 4);
-	memcpy16(&se_mem[31][89+128], runtimeHiScoreTileIDs, 4);
-	memcpy16(&se_mem[31][89+128+32], runtimeHiScoreTileIDsL, 4);
-
-	memcpy(&tile_mem[4][0], sprites_gfx, sprites_gfx_size);
-	oam_init(obj_buffer, 128);
-
-	REG_BG1VOFS = -3;
-
-    REG_BG0CNT = BG_CBB(0) | BG_SBB(30) | BG_4BPP | BG_REG_32x32 | BG_PRIO(1);
-    REG_BG1CNT = BG_CBB(0) | BG_SBB(31) | BG_4BPP | BG_REG_32x32 | BG_PRIO(0);
-    REG_DISPCNT = DCNT_OBJ | DCNT_OBJ_1D | DCNT_BG0 | DCNT_MODE0 | DCNT_BG1;
-
-    key_repeat_limits(20, 55555);
-
-    if (state->saved) {
-        UpdateScore();
-        UpdateSquares();
-    } else {
-        StartGame();
-    }
-
-}
-
-
-void StartGame(void) {
+void StartGame() {
     you_win = 0;
     win_timer = 0;
     new_game_timer = 0;
@@ -683,14 +633,10 @@ void StartGame(void) {
     play_spawn_sound = 1;
 }
 
-
-
-void UpdateGame(void) {
-
+static void UpdateGame() {
     UpdateScore();
     UpdateScoreParticle();
 
-    vid_vsync();
     if (fade_timer > 0) {
         clr_blend_fast(&pal_bg_mem[0], (COLOR *)bg0_pal, &pal_bg_mem[0], 256, (GAME_FADE_DURATION - fade_timer) >> 1);
         clr_blend_fast(&pal_obj_mem[0], (COLOR *)sprites_pal, &pal_obj_mem[0], 256, (GAME_FADE_DURATION - fade_timer) >> 1);
@@ -702,7 +648,6 @@ void UpdateGame(void) {
         }
     }
 
-
     if (!CanMove()) {
         lose_timer++;
     }
@@ -710,18 +655,28 @@ void UpdateGame(void) {
         --input_delay;
     }
 
-    if (!you_win) {
-        key_poll();
+    if (you_win) {
+        ++win_timer;
+
+        if (win_timer > 50) {
+            SetMode(GM_WIN);
+        }
+
+        return;
     }
 
-
+#ifndef NDEBUG
+    if (key_hit(KEY_L|KEY_R)) {
+        SetMode(key_hit(KEY_R) ? GM_GAMEOVER : GM_WIN);
+        return;
+    }
+#endif
 
     if (key_hit(KEY_SELECT)) {
         pal_bg_mem[22] = pal_bg_mem[24];
         pal_bg_mem[23] = pal_bg_mem[25];
         StartGame();
-    }
-    if (key_released(KEY_SELECT)) {
+    } else if (key_released(KEY_SELECT)) {
         pal_bg_mem[22] = pal_bg_mem[5];
         pal_bg_mem[23] = pal_bg_mem[5];
         state->saved = 0;
@@ -732,8 +687,8 @@ void UpdateGame(void) {
         pal_bg_mem[38] = pal_bg_mem[40];
         pal_bg_mem[39] = pal_bg_mem[41];
         SetMode(GM_SAVE);
-    }
-    if (key_released(KEY_START)) {
+        return;
+    } else if (key_released(KEY_START)) {
         pal_bg_mem[38] = pal_bg_mem[5];
         pal_bg_mem[39] = pal_bg_mem[5];
     }
@@ -784,37 +739,67 @@ void UpdateGame(void) {
     }
 
     if (play_merge_sound) {
-        mmEffectEx(play_merge_sound == 3 ? &assets->sfx.big_merge : play_merge_sound == 2 ? &assets->sfx.merge : &assets->sfx.small_merge);
+        mmEffect(play_merge_sound == 3 ? SFX_BIG_MERGE : play_merge_sound == 2 ? SFX_MERGE : SFX_SMALL_MERGE);
         play_merge_sound = 0;
     }
     if (play_slide_sound) {
-        mmEffectEx(&assets->sfx.slide);
+        mmEffect(SFX_SLIDE);
         play_slide_sound = 0;
     }
     if (play_spawn_sound) {
-        mmEffectEx(&assets->sfx.spawn);
+        mmEffect(SFX_SPAWN);
         play_spawn_sound = 0;
     }
 
     AnimateSquares();
 
-
     if (lose_timer > 80) {
-        SetMode(GM_GAMEOVER);
         lose_timer = 0;
-        mmEffectEx(&assets->sfx.lose);
-    }
-
-    if (you_win) {
-        ++win_timer;
-    }
-
-    if (win_timer > 50) {
-        SetMode(GM_WIN);
+        SetMode(GM_GAMEOVER);
+        return;
     }
 
     obj_copy(obj_mem, obj_buffer, 16); // 16 number tiles
     obj_aff_copy(obj_aff_mem, obj_aff_buffer, 16);
+}
 
+void InitGame() {
+    state = GetState();
+    state->update = UpdateGame;
 
+    squares = state->squares;
+
+    BFN_SET(REG_DISPSTAT, 36, DSTAT_VCT);
+    irq_set(II_VCOUNT, HiScoreBG1HOffset, 1);
+
+    fade_over = 0;
+    fade_timer = GAME_FADE_DURATION;
+
+    memcpy(&tile_mem[0][0], bg0_gfx, bg0_gfx_size);
+    memcpy(&se_mem[30][0], bg0_map, bg0_map_size);
+
+    memcpy(&tile_mem[1][0], score_gfx, score_gfx_size);
+
+    memcpy16(&se_mem[31][89], runtimeScoreTileIDs, 4);
+    memcpy16(&se_mem[31][89+32], runtimeScoreTileIDsL, 4);
+    memcpy16(&se_mem[31][89+128], runtimeHiScoreTileIDs, 4);
+    memcpy16(&se_mem[31][89+128+32], runtimeHiScoreTileIDsL, 4);
+
+    memcpy(&tile_mem[4][0], sprites_gfx, sprites_gfx_size);
+    oam_init(obj_buffer, 128);
+
+    REG_BG1VOFS = -3;
+
+    REG_BG0CNT = BG_CBB(0) | BG_SBB(30) | BG_4BPP | BG_REG_32x32 | BG_PRIO(1);
+    REG_BG1CNT = BG_CBB(0) | BG_SBB(31) | BG_4BPP | BG_REG_32x32 | BG_PRIO(0);
+    REG_DISPCNT = DCNT_OBJ | DCNT_OBJ_1D | DCNT_BG0 | DCNT_MODE0 | DCNT_BG1;
+
+    key_repeat_limits(20, 55555);
+
+    if (state->saved) {
+        UpdateScore();
+        UpdateSquares();
+    } else {
+        StartGame();
+    }
 }

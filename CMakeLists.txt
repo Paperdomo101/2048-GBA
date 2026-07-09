@@ -6,8 +6,6 @@ set(CMAKE_TOOLCHAIN_FILE "$ENV{DEVKITPRO}/cmake/GBA.cmake")
 
 project(2048 VERSION 1.2 LANGUAGES C ASM)
 
-set(CMAKE_C_STANDARD 11)
-
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build." FORCE)
 	set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
@@ -16,7 +14,6 @@ message(STATUS "Build type is set to ${CMAKE_BUILD_TYPE}.")
 
 # exe
 add_executable(2048
-	source/assets.c
 	source/first.c
 	source/game.c
 	source/global.h
@@ -27,11 +24,10 @@ add_executable(2048
 	source/storage.c
 	source/title.c
 	source/win.c)
-target_include_directories(2048 PRIVATE ext)
+target_compile_features(2048 PRIVATE c_std_11)
 target_compile_options(2048 PRIVATE
 	-Wall -Wextra
-	$<$<CONFIG:Release,RelWithDebInfo>:-mlong-calls -fomit-frame-pointer -ffast-math>
-)
+	$<$<CONFIG:Release,RelWithDebInfo>:-mlong-calls -fomit-frame-pointer -ffast-math>)
 
 # gfx
 grit_add_binary_target(sprites graphics/sprites.png NO_MAP OPTIONS -Mh4 -Mw4)
