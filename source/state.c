@@ -5,8 +5,7 @@ static State state = {0};
 void SetMode(int mode) {
     state.mode = mode;
 
-    switch (state.mode)
-    {
+    switch (state.mode) {
     case GM_FIRST:
         InitFirst();
         break;

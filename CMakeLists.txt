@@ -93,13 +93,12 @@ endif()
 if(ASTYLE_EXECUTABLE)
 	separate_arguments(ASTYLE_OPTIONS UNIX_COMMAND
 		"--options=none --project=none --suffix=none --style=attach
-		--indent=tab=4 --indent-switches --indent-preproc-block
-		--min-conditional-indent=0 --squeeze-lines=1 --max-code-length=100
-		--pad-oper --pad-comma --pad-header --unpad-paren
-		--align-pointer=type --align-reference=name")
+		--indent=spaces=4 --indent-cases --indent-preproc-block
+		--min-conditional-indent=0 --squeeze-lines=1 --max-code-length=120
+		--pad-comma --pad-header --unpad-paren --align-pointer=name")
 	add_custom_target(source-format
 		COMMAND ${ASTYLE_EXECUTABLE} ${ASTYLE_OPTIONS}
-			"${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
-			"${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
+			"${CMAKE_CURRENT_SOURCE_DIR}/source/*.h"
+			"${CMAKE_CURRENT_SOURCE_DIR}/source/*.c"
 		COMMENT "Applying source code format..." VERBATIM)
 endif()

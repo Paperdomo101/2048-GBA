@@ -45,7 +45,7 @@ static void UpdateOver() {
             memset16(pal_obj_mem, pal_bg_mem[5], 256);
 
             // alllow retry with START
-            if(!key_hit(KEY_START)) {
+            if (!key_hit(KEY_START)) {
                 state->saved = 0;
                 SaveState(state);
             } else {

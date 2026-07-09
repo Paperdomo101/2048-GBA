@@ -19,7 +19,7 @@ int main() {
     SetMode(GM_FIRST);
 
     // main loop
-    while(1) {
+    while (1) {
         mmFrame();
         key_poll();
         state->update();
