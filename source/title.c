@@ -6,6 +6,7 @@ static State *state;
 
 static int fade_timer = 0;
 static int fade_over = 0;
+static int reset_timer = 0;
 
 static void UpdateTitle() {
     state->seed += rand() << 1;
@@ -20,6 +21,15 @@ static void UpdateTitle() {
         if (key_hit(KEY_START | KEY_A | KEY_B)) {
             mmEffect(SFX_START);
             fade_timer = TITLE_FADE_DURATION;
+        }
+        if (key_held(KEY_RESET_HI) == KEY_RESET_HI) {
+            reset_timer++;
+            if (reset_timer == 80) {
+                reset_timer = 0;
+                CleanStorage(1);
+                LoadState(state);
+                mmEffect(SFX_LOSE);
+            }
         }
     }
 
@@ -37,4 +47,5 @@ void InitTitle() {
     state->update = UpdateTitle;
     fade_over = 0;
     fade_timer = 0;
+    reset_timer = 0;
 }

@@ -23,7 +23,8 @@ typedef enum {
 #define ANIM_MERGE_DURATION (9)
 #define ANIM_SCORE_DURATION (32)
 
-#define KEY_RETURN (KEY_A | KEY_B | KEY_START | KEY_SELECT)
+#define KEY_RETURN (KEY_A|KEY_B|KEY_START|KEY_SELECT)
+#define KEY_RESET_HI (KEY_L|KEY_R|KEY_SELECT)
 
 typedef struct {
     int x : 16;
@@ -53,6 +54,7 @@ typedef struct {
 State *GetState();
 void SetMode(int mode);
 
+void CleanStorage(int with_hiscore);
 void LoadState(State *state);
 void SaveState(State *state);
 
