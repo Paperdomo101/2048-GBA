@@ -1,8 +1,9 @@
-#include "global.h"
-#include "tonc_memmap.h"
-#include "tonc_video.h"
-#include "savescreen.h"
 #include <string.h>
+
+#include "global.h"
+
+#include "savescreen_gfx.h"
+#include "savescreen_map.h"
 
 static State *state;
 static Assets *assets;
@@ -16,8 +17,8 @@ void InitSave(void) {
     fade_over = 0;
     fade_timer = TITLE_FADE_DURATION;
 
-    memcpy(&tile_mem[0][0], savescreenTiles, savescreenTilesLen);
-	memcpy(&se_mem[30][0], savescreenMap, savescreenMapLen);
+    memcpy(&tile_mem[0][0], savescreen_gfx, savescreen_gfx_size);
+	memcpy(&se_mem[30][0], savescreen_map, savescreen_map_size);
 
     REG_DISPCNT = DCNT_BG0 | DCNT_MODE0;
 

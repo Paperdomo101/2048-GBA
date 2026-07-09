@@ -1,12 +1,7 @@
 #pragma once
+
 #include <tonc.h>
-#include <tonc_memmap.h>
-#include <tonc_types.h>
-#include <tonc_video.h>
-#include <tonc_oam.h>
-#include <tonc_irq.h>
 #include <maxmod.h>
-#include "mm_types.h"
 
 enum Gamemodes {
     GM_FIRST = 0,

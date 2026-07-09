@@ -1,17 +1,14 @@
-#include "global.h"
 #include <stdlib.h>
 #include <string.h>
-#include "bg0.h"
-#include "score.h"
-#include "sprites.h"
-#include "tonc_core.h"
-#include "tonc_input.h"
-#include "tonc_irq.h"
-#include "tonc_memdef.h"
-#include "tonc_memmap.h"
-#include "tonc_oam.h"
-#include "tonc_types.h"
-#include "tonc_video.h"
+
+#include "global.h"
+
+#include "bg0_gfx.h"
+#include "bg0_map.h"
+#include "bg0_pal.h"
+#include "score_gfx.h"
+#include "sprites_gfx.h"
+#include "sprites_pal.h"
 
 static State *state;
 static Assets *assets;
@@ -619,17 +616,17 @@ void InitGame(void) {
     fade_over = 0;
     fade_timer = GAME_FADE_DURATION;
 
-	memcpy(&tile_mem[0][0], bg0Tiles, bg0TilesLen);
-	memcpy(&se_mem[30][0], bg0Map, bg0MapLen);
+	memcpy(&tile_mem[0][0], bg0_gfx, bg0_gfx_size);
+	memcpy(&se_mem[30][0], bg0_map, bg0_map_size);
 
-	memcpy(&tile_mem[1][0], scoreTiles, scoreTilesLen);
+	memcpy(&tile_mem[1][0], score_gfx, score_gfx_size);
 
 	memcpy16(&se_mem[31][89], runtimeScoreTileIDs, 4);
 	memcpy16(&se_mem[31][89+32], runtimeScoreTileIDsL, 4);
 	memcpy16(&se_mem[31][89+128], runtimeHiScoreTileIDs, 4);
 	memcpy16(&se_mem[31][89+128+32], runtimeHiScoreTileIDsL, 4);
 
-	memcpy(&tile_mem[4][0], spritesTiles, spritesTilesLen);
+	memcpy(&tile_mem[4][0], sprites_gfx, sprites_gfx_size);
 	oam_init(obj_buffer, 128);
 
 	REG_BG1VOFS = -3;
@@ -695,13 +692,13 @@ void UpdateGame(void) {
 
     vid_vsync();
     if (fade_timer > 0) {
-        clr_blend_fast(&pal_bg_mem[0], (COLOR *)bg0Pal, &pal_bg_mem[0], 256, (GAME_FADE_DURATION - fade_timer) >> 1);
-        clr_blend_fast(&pal_obj_mem[0], (COLOR *)spritesPal, &pal_obj_mem[0], 256, (GAME_FADE_DURATION - fade_timer) >> 1);
+        clr_blend_fast(&pal_bg_mem[0], (COLOR *)bg0_pal, &pal_bg_mem[0], 256, (GAME_FADE_DURATION - fade_timer) >> 1);
+        clr_blend_fast(&pal_obj_mem[0], (COLOR *)sprites_pal, &pal_obj_mem[0], 256, (GAME_FADE_DURATION - fade_timer) >> 1);
         --fade_timer;
         if (fade_timer == 0 && !fade_over) {
             fade_over = 1;
-            memcpy(pal_bg_mem, bg0Pal, bg0PalLen);
-            memcpy(pal_obj_mem, spritesPal, spritesPalLen);
+            memcpy(pal_bg_mem, bg0_pal, bg0_pal_size);
+            memcpy(pal_obj_mem, sprites_pal, sprites_pal_size);
         }
     }
 

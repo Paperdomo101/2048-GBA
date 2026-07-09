@@ -1,14 +1,9 @@
-#include "global.h"
-#include "maxmod.h"
-#include "tonc_input.h"
-#include "tonc_memdef.h"
-#include "tonc_memmap.h"
-#include "tonc_oam.h"
-#include "tonc_types.h"
-#include "tonc_video.h"
-#include "youwin.h"
 #include <string.h>
 #include <stdlib.h>
+
+#include "global.h"
+
+#include "youwin_gfx.h"
 
 static State *state;
 static Assets *assets;
@@ -30,7 +25,7 @@ void InitWin(void) {
     REG_BG1HOFS = GetBG1Off(0) + GetFirstIs1(0);
 
 
-    memcpy(&tile_mem[4][256], youwinTiles, youwinTilesLen);
+    memcpy(&tile_mem[4][256], youwin_gfx, youwin_gfx_size);
 
     obj_copy(obj_mem+2, obj_mem, 16); // 16 number tiles
     obj_you = &obj_buffer[0];

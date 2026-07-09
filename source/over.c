@@ -1,13 +1,9 @@
-#include "global.h"
-#include "tonc_input.h"
-#include "tonc_memdef.h"
-#include "tonc_memmap.h"
-#include "tonc_oam.h"
-#include "tonc_types.h"
-#include "tonc_video.h"
-#include "gameover.h"
 #include <string.h>
 #include <stdlib.h>
+
+#include "global.h"
+
+#include "gameover_gfx.h"
 
 static State *state;
 static Assets *assets;
@@ -28,7 +24,7 @@ void InitOver(void) {
     REG_BG1VOFS = GetDigitCount(0) < 5 ? -3 : -4;
     REG_BG1HOFS = GetBG1Off(0) + GetFirstIs1(0);
 
-    memcpy(&tile_mem[4][256], gameoverTiles, gameoverTilesLen);
+    memcpy(&tile_mem[4][256], gameover_gfx, gameover_gfx_size);
 
     obj_copy(obj_mem+2, obj_mem, 16); // 16 number tiles
     obj_game = &obj_buffer[0];
