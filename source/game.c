@@ -1,20 +1,16 @@
-#include "global.h"
 #include <stdlib.h>
 #include <string.h>
-#include "bg0.h"
-#include "score.h"
-#include "sprites.h"
-#include "tonc_core.h"
-#include "tonc_input.h"
-#include "tonc_irq.h"
-#include "tonc_memdef.h"
-#include "tonc_memmap.h"
-#include "tonc_oam.h"
-#include "tonc_types.h"
-#include "tonc_video.h"
+
+#include "global.h"
+
+#include "bg0_gfx.h"
+#include "bg0_map.h"
+#include "bg0_pal.h"
+#include "score_gfx.h"
+#include "sprites_gfx.h"
+#include "sprites_pal.h"
 
 static State *state;
-static Assets *assets;
 static Square *squares;
 
 static int fade_timer = 0;
@@ -37,7 +33,6 @@ static int divisors[7] = {1, 10, 100, 1000, 10000, 100000, 1000000};
 static int bg1_hofs[7] = {-13, -9, -6, -3, -1, -4, -2};
 static int digit_count, hidigit_count;
 static int first_is_1, hifirst_is_1;
-
 
 static u16 empty[16] = {0};
 static int empty_len;
@@ -69,22 +64,37 @@ static u8 anim_slide[3][ANIM_SLIDE_DURATION] = {
     { 34, 63, 90, 105, 108 },
 };
 
+static int tally_active = 0;
 static FIXED tally_anim_timer = 0;
-static u8 anim_tally_alpha[ANIM_SCORE_DURATION] = {0,0,0,0,0,1,1,1,1,2,2,3,3,4,5,6,8,9,11,12,13,15,17,19,22,24,26,27,29,29,30,31};
+static u8 anim_tally_alpha[ANIM_SCORE_DURATION] = {0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 4, 5, 6, 8, 9, 11, 12, 13, 15, 17, 19, 22, 24, 26, 27, 29, 29, 30, 31};
 static int tally_x = 204;
 
-void CalculateUsed(void) {
+void PlayMergeSound(int which) {
+    if(which == 3) {
+        mmEffect(SFX_BIG_MERGE);
+        return;
+    } else if(which == 2) {
+        mmEffect(SFX_MERGE);
+        return;
+    }
+
+    // change pitch a bit
+    mm_sfxhand handle = mmEffect(SFX_SMALL_MERGE);
+    mmEffectScaleRate(handle, rand() % 400 + 824);
+}
+
+void CalculateUsed() {
     int used = 0;
     for (int j = 0; j < 4; j++) {
-    for (int i = 0; i < 4; i++)
-    {
-        int index = i + (j << 2);
-        if (squares[index].value != 0) {
-            ++used;
-            continue;
+        for (int i = 0; i < 4; i++) {
+            int index = i + (j << 2);
+            if (squares[index].value != 0) {
+                ++used;
+                continue;
+            }
+            empty[index - used] = index;
         }
-        empty[index - used] = index;
-    }}
+    }
     empty_len = 16 - used;
 }
 
@@ -120,9 +130,15 @@ void SpawnScoreParticle(u32 tally) {
     u32 tally_buffer[4*8] = {0};
 
     int tally_digit_count = 1;
-    if (tally > 9) { ++tally_digit_count; }
-    if (tally > 99) { ++tally_digit_count; }
-    if (tally > 999) { ++tally_digit_count; }
+    if (tally > 9) {
+        ++tally_digit_count;
+    }
+    if (tally > 99) {
+        ++tally_digit_count;
+    }
+    if (tally > 999) {
+        ++tally_digit_count;
+    }
 
     FillTallyGFX(tally_buffer, tally, tally_digit_count, 6, 209);
 
@@ -133,14 +149,17 @@ void SpawnScoreParticle(u32 tally) {
     obj_set_pos(&obj_buffer[18], tally_x, 20);
     obj_copy(obj_mem+18, &obj_buffer[18], 1);
     tally_anim_timer = 0;
-
+    tally_active = 1;
 }
 
-void UpdateScoreParticle(void) {
+void UpdateScoreParticle() {
+    if (!tally_active) return;
+
     if (tally_anim_timer >> 8 >= ANIM_SCORE_DURATION) {
-        tally_anim_timer = 0;
+        tally_active = 0;
         obj_hide(&obj_buffer[18]);
     }
+
     obj_set_pos(&obj_buffer[18], tally_x, 20 - (tally_anim_timer >> 8));
     obj_copy(obj_mem+18, &obj_buffer[18], 1);
     tally_anim_timer += 280;
@@ -155,13 +174,13 @@ void FillScoreGFX(u32 *score_buffer, u32 *score_buffer_l, int score, int digit_c
 
     // int big_off = 0;
 
-
     for (int i = 0; i < digit_count; ++i) {
 
         int val = (int)((score) / divisors[digit_count-i-1]) % 10;
 
         for (int row = 0; row < 8; ++row) {
-            u32 src_buff = 0; u32 src_buffl = 0;
+            u32 src_buff = 0;
+            u32 src_buffl = 0;
             src_buff |= *((int*)(&tile_mem[1][tile_off+val]) + row);
 
             if (digit_count < 5) { // Lower half of big numbers
@@ -185,7 +204,6 @@ void FillScoreGFX(u32 *score_buffer, u32 *score_buffer_l, int score, int digit_c
             }
         }
 
-
         offset += draw_w;
         if (offset >= 8) {
             // big_off += 8;
@@ -197,8 +215,7 @@ void FillScoreGFX(u32 *score_buffer, u32 *score_buffer_l, int score, int digit_c
     }
 }
 
-
-void ResetScore(void) {
+void ResetScore() {
     state->score = 0;
 
     memset32(&tile_mem[1][48], 0, 4 * 8);
@@ -217,13 +234,12 @@ int GetBG1Off(int hi) {
     return bg1_hofs[(hi ? hidigit_count : digit_count) - 1];
 }
 
-void HiScoreBG1HOffset(void) {
+void HiScoreBG1HOffset() {
     REG_BG1VOFS = hidigit_count < 5 ? -3 : -4;
     REG_BG1HOFS = bg1_hofs[hidigit_count-1] + GetFirstIs1(1);
 }
 
-void UpdateScore(void) {
-
+void UpdateScore() {
     if (state->score > state->hiscore) {
         state->hiscore = state->score;
     }
@@ -235,18 +251,41 @@ void UpdateScore(void) {
 
     first_is_1 = state->score == 1;
     digit_count = 1;
-    if (state->score > 9) { ++digit_count; first_is_1 = state->score < 20; }
-    if (state->score > 99) { ++digit_count; first_is_1 = state->score < 200; }
-    if (state->score > 999) { ++digit_count; first_is_1 = state->score < 2000; }
-    if (state->score > 9999) { ++digit_count; first_is_1 = state->score < 20000; draw_w = 6; ++draw_y; tile_id = 5; } //y_off = 1;
-    if (state->score > 99999) { ++digit_count; first_is_1 = state->score < 200000; draw_w = 4; ++draw_y; } //y_off = 2; tile_id = 208;
+    if (state->score > 9) {
+        ++digit_count;
+        first_is_1 = state->score < 20;
+    }
+    if (state->score > 99) {
+        ++digit_count;
+        first_is_1 = state->score < 200;
+    }
+    if (state->score > 999) {
+        ++digit_count;
+        first_is_1 = state->score < 2000;
+    }
+    if (state->score > 9999) {
+        ++digit_count;
+        first_is_1 = state->score < 20000;
+        draw_w = 6;
+        ++draw_y;
+        tile_id = 5;
+        //y_off = 1;
+    }
+    if (state->score > 99999) {
+        ++digit_count;
+        first_is_1 = state->score < 200000;
+        draw_w = 4;
+        ++draw_y;
+        //y_off = 2;
+        //tile_id = 208;
+    }
 
     // digit_count = 4;
 
     REG_BG1VOFS = digit_count < 5 ? -3 : -4;
     REG_BG1HOFS = bg1_hofs[digit_count-1] + first_is_1;
 
-    #define DIGITS_TILE_COUNT (4)
+#define DIGITS_TILE_COUNT (4)
 
     u32 score_buffer[DIGITS_TILE_COUNT*8] = {0};
     u32 score_buffer_l[DIGITS_TILE_COUNT*8] = {0};
@@ -262,12 +301,31 @@ void UpdateScore(void) {
 
     hifirst_is_1 = state->hiscore == 1;
     hidigit_count = 1;
-    if (state->hiscore > 9) { ++hidigit_count; hifirst_is_1 = state->hiscore < 20; }
-    if (state->hiscore > 99) { ++hidigit_count; hifirst_is_1 = state->hiscore < 200; }
-    if (state->hiscore > 999) { ++hidigit_count; hifirst_is_1 = state->hiscore < 2000; }
-    if (state->hiscore > 9999) { ++hidigit_count; hifirst_is_1 = state->hiscore < 20000; draw_w = 6; ++draw_y; tile_id = 5; }
-    if (state->hiscore > 99999) { ++hidigit_count; hifirst_is_1 = state->hiscore < 200000; draw_w = 4; ++draw_y; }
-
+    if (state->hiscore > 9) {
+        ++hidigit_count;
+        hifirst_is_1 = state->hiscore < 20;
+    }
+    if (state->hiscore > 99) {
+        ++hidigit_count;
+        hifirst_is_1 = state->hiscore < 200;
+    }
+    if (state->hiscore > 999) {
+        ++hidigit_count;
+        hifirst_is_1 = state->hiscore < 2000;
+    }
+    if (state->hiscore > 9999) {
+        ++hidigit_count;
+        hifirst_is_1 = state->hiscore < 20000;
+        draw_w = 6;
+        ++draw_y;
+        tile_id = 5;
+    }
+    if (state->hiscore > 99999) {
+        ++hidigit_count;
+        hifirst_is_1 = state->hiscore < 200000;
+        draw_w = 4;
+        ++draw_y;
+    }
 
     memset32(score_buffer, 0, DIGITS_TILE_COUNT*8);
     memset32(score_buffer_l, 0, DIGITS_TILE_COUNT*8);
@@ -289,14 +347,16 @@ void SetSquare(u8 index, Square square) {
     }
 }
 
-int AddRandomSquare(void) {
+int AddRandomSquare() {
     if (empty_len <= 0) {
         return 0;
     }
 
     int randex = rand() % empty_len;
     int index = empty[randex];
-    SetSquare(index, (Square) { .value=(rand() % 100 < 10) + 1, .fresh = 1, .shift = 0, .merge = 0});
+    SetSquare(index, (Square) {
+        .value=(rand() % 100 < 10) + 1, .fresh = 1, .shift = 0, .merge = 0
+    });
 
     int tile_id = (squares[index].value - 1) << 4;
     OBJ_ATTR *square = &obj_buffer[index];
@@ -308,8 +368,7 @@ int AddRandomSquare(void) {
     obj_set_pos(square, (x << 5) + (x << 2) + origin.x, (y << 5) + (y << 2) + origin.y);
 
     if (randex < 15) {
-        for (int i = 0; i < empty_len - randex; i++)
-        {
+        for (int i = 0; i < empty_len - randex; i++) {
             empty[randex + i] = empty[randex + i + 1];
         }
     }
@@ -317,42 +376,44 @@ int AddRandomSquare(void) {
     return 1;
 }
 
-int CanMove(void) {
-    if (empty_len > 0) { return 1; }
+int CanMove() {
+    if (empty_len > 0) {
+        return 1;
+    }
 
     for (int j = 0; j < 4; j++) {
-    for (int i = 0; i < 4; i++)
-    {
-        int index = i + (j << 2);
-        if (squares[index].value == 0) {
-            return 1;
-        }
+        for (int i = 0; i < 4; i++) {
+            int index = i + (j << 2);
+            if (squares[index].value == 0) {
+                return 1;
+            }
 
-        if (j > 0) {
-            int up = i + ((j - 1) << 2);
-            if (squares[index].value == squares[up].value) {
-                return 1;
+            if (j > 0) {
+                int up = i + ((j - 1) << 2);
+                if (squares[index].value == squares[up].value) {
+                    return 1;
+                }
+            }
+            if (i > 0) {
+                int left = (i - 1) + (j << 2);
+                if (squares[index].value == squares[left].value) {
+                    return 1;
+                }
+            }
+            if (i < 3) {
+                int right = (i + 1) + (j << 2);
+                if (squares[index].value == squares[right].value) {
+                    return 1;
+                }
+            }
+            if (j < 3) {
+                int down = i + ((j + 1) << 2);
+                if (squares[index].value == squares[down].value) {
+                    return 1;
+                }
             }
         }
-        if (i > 0) {
-            int left = (i - 1) + (j << 2);
-            if (squares[index].value == squares[left].value) {
-                return 1;
-            }
-        }
-        if (i < 3) {
-            int right = (i + 1) + (j << 2);
-            if (squares[index].value == squares[right].value) {
-                return 1;
-            }
-        }
-        if (j < 3) {
-            int down = i + ((j + 1) << 2);
-            if (squares[index].value == squares[down].value) {
-                return 1;
-            }
-        }
-    }}
+    }
     return 0;
 };
 
@@ -398,16 +459,15 @@ int SlideAndMerge(u8 i0, u8 i1, u8 i2, u8 i3) {
                 ++d;
             }
             working[i].value = 0;
-        }
-        else if (working[p].value == working[i].value) {
+        } else if (working[p].value == working[i].value) {
             ++working[p].value;
             working[p].merge = 1;
             tally += points[working[p].value-1];
-            play_merge_sound = (working[p].value <= 3 && play_merge_sound < 2) ? 1 : (working[p].value <= 6 && play_merge_sound < 3) ? 2 : 3;
+            play_merge_sound = (working[p].value <= 3 && play_merge_sound < 2) ? 1 : (working[p].value <= 6
+                               && play_merge_sound < 3) ? 2 : 3;
             working[i].value = 0;
             working[i].shift = d;
-        }
-        else if (working[i - p1].value == 0) {
+        } else if (working[i - p1].value == 0) {
             working[i - p1].value = working[i].value;
             working[i].value = 0;
             working[i].shift = p1;
@@ -415,10 +475,9 @@ int SlideAndMerge(u8 i0, u8 i1, u8 i2, u8 i3) {
     }
 
     if (squares[i0].value != working[0].value
-     || squares[i1].value != working[1].value
-     || squares[i2].value != working[2].value
-     || squares[i3].value != working[3].value)
-    {
+        || squares[i1].value != working[1].value
+        || squares[i2].value != working[2].value
+        || squares[i3].value != working[3].value) {
         squares[i0] = working[0];
         squares[i1] = working[1];
         squares[i2] = working[2];
@@ -426,10 +485,8 @@ int SlideAndMerge(u8 i0, u8 i1, u8 i2, u8 i3) {
         success = 1;
     }
 
-
     return success;
 }
-
 
 int Slide(enum Directions direction) {
     int success = 0;
@@ -441,33 +498,37 @@ int Slide(enum Directions direction) {
 
     switch (direction) {
     case UP: {
-        for (int i = 0; i < 4; ++i) {
-            if (!SlideAndMerge(i, (1<<2) + i, (2<<2) + i, (3<<2) + i)) { continue; }
-            success = 1;
+            for (int i = 0; i < 4; ++i) {
+                if (!SlideAndMerge(i, (1<<2) + i, (2<<2) + i, (3<<2) + i)) continue;
+                success = 1;
+            }
         }
-    } break;
+        break;
     case DOWN: {
-        for (int i = 3; i >= 0; --i) {
-            if (!SlideAndMerge((3<<2) + i, (2<<2) + i, (1<<2) + i, i)) { continue; }
-            success = 1;
+            for (int i = 3; i >= 0; --i) {
+                if (!SlideAndMerge((3<<2) + i, (2<<2) + i, (1<<2) + i, i)) continue;
+                success = 1;
+            }
         }
-    } break;
+        break;
     case LEFT: {
-        for (int i = 0; i < 4; ++i) {
-            int row = i << 2;
-            if (!SlideAndMerge(0 + row, 1 + row, 2 + row, 3 + row)) { continue; }
-            success = 1;
+            for (int i = 0; i < 4; ++i) {
+                int row = i << 2;
+                if (!SlideAndMerge(0 + row, 1 + row, 2 + row, 3 + row)) continue;
+                success = 1;
+            }
         }
-    } break;
+        break;
     case RIGHT: {
-        for (int i = 0; i < 4; ++i) {
-            int row = i << 2;
-            if (!SlideAndMerge(3 + row, 2 + row, 1 + row, 0 + row)) { continue; }
-            success = 1;
+            for (int i = 0; i < 4; ++i) {
+                int row = i << 2;
+                if (!SlideAndMerge(3 + row, 2 + row, 1 + row, 0 + row)) continue;
+                success = 1;
+            }
         }
-    } break;
+        break;
     default: {
-    } break;
+        } break;
     };
 
     if (play_merge_sound && tally > 0) {
@@ -493,13 +554,12 @@ int Slide(enum Directions direction) {
     return success;
 }
 
-void UpdateSquares(void) {
-    for (int i = 0; i < 16; ++i)
-    {
+void UpdateSquares() {
+    for (int i = 0; i < 16; ++i) {
         obj_hide(&obj_buffer[i]);
         int val = squares[i].value;
 
-        if (val <= 0) { continue; }
+        if (val <= 0) continue;
 
         OBJ_AFFINE *oaff = &obj_aff_buffer[i];
         obj_aff_identity(oaff);
@@ -507,7 +567,8 @@ void UpdateSquares(void) {
         int tile_id = (val - 1) << 4;
         OBJ_ATTR *square = &obj_buffer[i];
 
-        obj_set_attr(square, ATTR0_SQUARE | ATTR0_AFF_DBL, ATTR1_SIZE_32x32 | ATTR1_AFF_ID(i), ATTR2_PALBANK(squares[i].fresh || val > 7) | tile_id);
+        obj_set_attr(square, ATTR0_SQUARE | ATTR0_AFF_DBL, ATTR1_SIZE_32x32 | ATTR1_AFF_ID(i), ATTR2_PALBANK(squares[i].fresh
+                     || val > 7) | tile_id);
 
         int x = i % 4;
         int y = i >> 2;
@@ -520,19 +581,18 @@ void UpdateSquares(void) {
     state->saved = 1;
 }
 
-void AnimateSquares(void) {
-
+void AnimateSquares() {
     if (anim_frame >= anim_duration) {
-        for (int i = 0; i < 16; i++)
-        {
-            if (squares[i].value <= 0) { continue; }
+        for (int i = 0; i < 16; i++) {
+            if (squares[i].value <= 0) continue;
+
             OBJ_AFFINE *oaff = &obj_aff_buffer[i];
             obj_aff_identity(oaff);
 
-
             int tile_id = (squares[i].value - 1) << 4;
             OBJ_ATTR *square = &obj_buffer[i];
-            obj_set_attr(square, ATTR0_SQUARE | ATTR0_AFF_DBL, ATTR1_SIZE_32x32 | ATTR1_AFF_ID(i), ATTR2_PALBANK(squares[i].value > 7) | tile_id);
+            obj_set_attr(square, ATTR0_SQUARE | ATTR0_AFF_DBL, ATTR1_SIZE_32x32 | ATTR1_AFF_ID(i),
+                         ATTR2_PALBANK(squares[i].value > 7) | tile_id);
 
             int x = i % 4;
             int y = i >> 2;
@@ -549,7 +609,7 @@ void AnimateSquares(void) {
 
     if (anim_duration == ANIM_SLIDE_DURATION) {
         for (int i = 0; i < 16; ++i) {
-            if (squares[i].shift == 0) { continue; }
+            if (squares[i].shift == 0) continue;
 
             int x = i % 4;
             int y = i >> 2;
@@ -559,18 +619,22 @@ void AnimateSquares(void) {
             int anim_x = 0;
             int anim_y = 0;
             switch (dir) {
-                case UP: {
+            case UP: {
                     anim_y = -anim_slide[squares[i].shift-1][anim_frame];
-                } break;
-                case LEFT: {
+                }
+                break;
+            case LEFT: {
                     anim_x = -anim_slide[squares[i].shift-1][anim_frame];
-                } break;
-                case DOWN: {
+                }
+                break;
+            case DOWN: {
                     anim_y = anim_slide[squares[i].shift-1][anim_frame];
-                } break;
-                case RIGHT: {
+                }
+                break;
+            case RIGHT: {
                     anim_x = anim_slide[squares[i].shift-1][anim_frame];
-                } break;
+                }
+                break;
             }
             obj_set_pos(&obj_buffer[i], ix + anim_x, iy + anim_y);
         }
@@ -583,99 +647,51 @@ void AnimateSquares(void) {
             UpdateSquares();
         }
     } else {
-        for (int i = 0; i < 16; i++)
-        {
-            if (squares[i].value <= 0) { continue; }
+        for (int i = 0; i < 16; i++) {
+            if (squares[i].value <= 0) continue;
+
             OBJ_AFFINE *oaff = &obj_aff_buffer[i];
             // obj_aff_identity(oaff);
 
             if (squares[i].fresh) {
                 clr_blend_fast(&pal_obj_mem[32], &pal_obj_mem[0], &pal_obj_mem[17], 6, anim_spawn_alpha[anim_frame] >> 3);
                 FIXED scale = anim_spawn_scale[anim_frame] << 4;
-                obj_aff_scale_inv(oaff, scale , scale );
-            }
-            else if (squares[i].merge) {
+                obj_aff_scale_inv(oaff, scale, scale);
+            } else if (squares[i].merge) {
                 FIXED scale = anim_merge_scale[anim_frame] << 4;
-                obj_aff_scale_inv(oaff, scale , scale );
+                obj_aff_scale_inv(oaff, scale, scale);
             }
         }
         ++anim_frame;
     }
 }
 
-
-
-
-void InitGame(void) {
-    state = GetState();
-    assets = GetAssets();
-
-    squares = state->squares;
-
-    BFN_SET(REG_DISPSTAT, 36, DSTAT_VCT);
-
-    irq_set(II_VCOUNT, HiScoreBG1HOffset, 1);
-
-    fade_over = 0;
-    fade_timer = GAME_FADE_DURATION;
-
-	memcpy(&tile_mem[0][0], bg0Tiles, bg0TilesLen);
-	memcpy(&se_mem[30][0], bg0Map, bg0MapLen);
-
-	memcpy(&tile_mem[1][0], scoreTiles, scoreTilesLen);
-
-	memcpy16(&se_mem[31][89], runtimeScoreTileIDs, 4);
-	memcpy16(&se_mem[31][89+32], runtimeScoreTileIDsL, 4);
-	memcpy16(&se_mem[31][89+128], runtimeHiScoreTileIDs, 4);
-	memcpy16(&se_mem[31][89+128+32], runtimeHiScoreTileIDsL, 4);
-
-	memcpy(&tile_mem[4][0], spritesTiles, spritesTilesLen);
-	oam_init(obj_buffer, 128);
-
-	REG_BG1VOFS = -3;
-
-    REG_BG0CNT = BG_CBB(0) | BG_SBB(30) | BG_4BPP | BG_REG_32x32 | BG_PRIO(1);
-    REG_BG1CNT = BG_CBB(0) | BG_SBB(31) | BG_4BPP | BG_REG_32x32 | BG_PRIO(0);
-    REG_DISPCNT = DCNT_OBJ | DCNT_OBJ_1D | DCNT_BG0 | DCNT_MODE0 | DCNT_BG1;
-
-    key_repeat_limits(20, 55555);
-
-    if (state->saved) {
-        UpdateScore();
-        UpdateSquares();
-    } else {
-        StartGame();
-    }
-
-}
-
-
-void StartGame(void) {
+void StartGame() {
     you_win = 0;
     win_timer = 0;
     new_game_timer = 0;
 
     empty_len = 0;
-    srand(rand()+state->squares[1].value+state->squares[2].value+state->squares[4].value+state->squares[5].value+state->squares[7].value+state->squares[9].value+state->squares[12].value+state->squares[13].value + state->score);
+    srand(rand()+state->squares[1].value+state->squares[2].value+state->squares[4].value+state->squares[5].value
+          +state->squares[7].value+state->squares[9].value+state->squares[12].value+state->squares[13].value + state->score);
 
-    for (int i = 0; i < 16; i+=4)   // Reset arrays
-    {
-        SetSquare(i, (Square){0});
+    for (int i = 0; i < 16; i+=4) { // Reset arrays
+        Square empty_square = {0};
+        SetSquare(i, empty_square);
         obj_hide(&obj_buffer[i]);
         int next = i+1;
-        SetSquare(next, (Square){0});
+        SetSquare(next, empty_square);
         obj_hide(&obj_buffer[next]);
         next = i+2;
-        SetSquare(next, (Square){0});
+        SetSquare(next, empty_square);
         obj_hide(&obj_buffer[next]);
         next = i+3;
-        SetSquare(next, (Square){0});
+        SetSquare(next, empty_square);
         obj_hide(&obj_buffer[next]);
     }
 
     ResetScore();
     UpdateScore();
-
 
     anim_frame = 0;
 
@@ -686,25 +702,20 @@ void StartGame(void) {
     play_spawn_sound = 1;
 }
 
-
-
-void UpdateGame(void) {
-
+static void UpdateGame() {
     UpdateScore();
     UpdateScoreParticle();
 
-    vid_vsync();
     if (fade_timer > 0) {
-        clr_blend_fast(&pal_bg_mem[0], (COLOR *)bg0Pal, &pal_bg_mem[0], 256, (GAME_FADE_DURATION - fade_timer) >> 1);
-        clr_blend_fast(&pal_obj_mem[0], (COLOR *)spritesPal, &pal_obj_mem[0], 256, (GAME_FADE_DURATION - fade_timer) >> 1);
+        clr_blend_fast(&pal_bg_mem[0], (COLOR *)bg0_pal, &pal_bg_mem[0], 256, (GAME_FADE_DURATION - fade_timer) >> 1);
+        clr_blend_fast(&pal_obj_mem[0], (COLOR *)sprites_pal, &pal_obj_mem[0], 256, (GAME_FADE_DURATION - fade_timer) >> 1);
         --fade_timer;
         if (fade_timer == 0 && !fade_over) {
             fade_over = 1;
-            memcpy(pal_bg_mem, bg0Pal, bg0PalLen);
-            memcpy(pal_obj_mem, spritesPal, spritesPalLen);
+            memcpy(pal_bg_mem, bg0_pal, bg0_pal_size);
+            memcpy(pal_obj_mem, sprites_pal, sprites_pal_size);
         }
     }
-
 
     if (!CanMove()) {
         lose_timer++;
@@ -713,18 +724,28 @@ void UpdateGame(void) {
         --input_delay;
     }
 
-    if (!you_win) {
-        key_poll();
+    if (you_win) {
+        ++win_timer;
+
+        if (win_timer > 50) {
+            SetMode(GM_WIN);
+        }
+
+        return;
     }
 
-
+#ifndef NDEBUG
+    if (key_hit(KEY_L|KEY_R)) {
+        SetMode(key_hit(KEY_R) ? GM_GAMEOVER : GM_WIN);
+        return;
+    }
+#endif
 
     if (key_hit(KEY_SELECT)) {
         pal_bg_mem[22] = pal_bg_mem[24];
         pal_bg_mem[23] = pal_bg_mem[25];
         StartGame();
-    }
-    if (key_released(KEY_SELECT)) {
+    } else if (key_released(KEY_SELECT)) {
         pal_bg_mem[22] = pal_bg_mem[5];
         pal_bg_mem[23] = pal_bg_mem[5];
         state->saved = 0;
@@ -735,8 +756,8 @@ void UpdateGame(void) {
         pal_bg_mem[38] = pal_bg_mem[40];
         pal_bg_mem[39] = pal_bg_mem[41];
         SetMode(GM_SAVE);
-    }
-    if (key_released(KEY_START)) {
+        return;
+    } else if (key_released(KEY_START)) {
         pal_bg_mem[38] = pal_bg_mem[5];
         pal_bg_mem[39] = pal_bg_mem[5];
     }
@@ -787,37 +808,67 @@ void UpdateGame(void) {
     }
 
     if (play_merge_sound) {
-        mmEffectEx(play_merge_sound == 3 ? &assets->sfx.big_merge : play_merge_sound == 2 ? &assets->sfx.merge : &assets->sfx.small_merge);
+        PlayMergeSound(play_merge_sound);
         play_merge_sound = 0;
     }
     if (play_slide_sound) {
-        mmEffectEx(&assets->sfx.slide);
+        mmEffect(SFX_SLIDE);
         play_slide_sound = 0;
     }
     if (play_spawn_sound) {
-        mmEffectEx(&assets->sfx.spawn);
+        mmEffect(SFX_SPAWN);
         play_spawn_sound = 0;
     }
 
     AnimateSquares();
 
-
     if (lose_timer > 80) {
-        SetMode(GM_GAMEOVER);
         lose_timer = 0;
-        mmEffectEx(&assets->sfx.lose);
-    }
-
-    if (you_win) {
-        ++win_timer;
-    }
-
-    if (win_timer > 50) {
-        SetMode(GM_WIN);
+        SetMode(GM_GAMEOVER);
+        return;
     }
 
     obj_copy(obj_mem, obj_buffer, 16); // 16 number tiles
     obj_aff_copy(obj_aff_mem, obj_aff_buffer, 16);
+}
 
+void InitGame() {
+    state = GetState();
+    state->update = UpdateGame;
 
+    squares = state->squares;
+
+    BFN_SET(REG_DISPSTAT, 36, DSTAT_VCT);
+    irq_set(II_VCOUNT, HiScoreBG1HOffset, 1);
+
+    fade_over = 0;
+    fade_timer = GAME_FADE_DURATION;
+
+    memcpy(&tile_mem[0][0], bg0_gfx, bg0_gfx_size);
+    memcpy(&se_mem[30][0], bg0_map, bg0_map_size);
+
+    memcpy(&tile_mem[1][0], score_gfx, score_gfx_size);
+
+    memcpy16(&se_mem[31][89], runtimeScoreTileIDs, 4);
+    memcpy16(&se_mem[31][89+32], runtimeScoreTileIDsL, 4);
+    memcpy16(&se_mem[31][89+128], runtimeHiScoreTileIDs, 4);
+    memcpy16(&se_mem[31][89+128+32], runtimeHiScoreTileIDsL, 4);
+
+    memcpy(&tile_mem[4][0], sprites_gfx, sprites_gfx_size);
+    oam_init(obj_buffer, 128);
+
+    REG_BG1VOFS = -3;
+
+    REG_BG0CNT = BG_CBB(0) | BG_SBB(30) | BG_4BPP | BG_REG_32x32 | BG_PRIO(1);
+    REG_BG1CNT = BG_CBB(0) | BG_SBB(31) | BG_4BPP | BG_REG_32x32 | BG_PRIO(0);
+    REG_DISPCNT = DCNT_OBJ | DCNT_OBJ_1D | DCNT_BG0 | DCNT_MODE0 | DCNT_BG1;
+
+    key_repeat_limits(20, 55555);
+
+    if (state->saved) {
+        UpdateScore();
+        UpdateSquares();
+    } else {
+        StartGame();
+    }
 }

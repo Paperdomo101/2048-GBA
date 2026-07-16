@@ -1,26 +1,29 @@
-#include "global.h"
 #include <stdlib.h>
 #include <string.h>
 
+#include "global.h"
+#include "soundbank_bin.h"
 
-int main(void) {
-
+int main() {
     State *state = GetState();
+
+    mmInitDefault((mm_addr)soundbank_bin, 8);
 
     irq_init(NULL);
 
     irq_set(II_VBLANK, mmVBlank, 0);
     irq_enable(II_VBLANK);
 
-    LoadAssets();
-
     LoadState(state);
 
     SetMode(GM_FIRST);
 
-    while(1) {
+    // main loop
+    while (1) {
         mmFrame();
-        UpdateState();
+        key_poll();
+        state->update();
+        VBlankIntrWait();
     }
 
     return 0;

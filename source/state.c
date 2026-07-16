@@ -5,8 +5,7 @@ static State state = {0};
 void SetMode(int mode) {
     state.mode = mode;
 
-    switch (state.mode)
-    {
+    switch (state.mode) {
     case GM_FIRST:
         InitFirst();
         break;
@@ -24,32 +23,6 @@ void SetMode(int mode) {
         break;
     case GM_WIN:
         InitWin();
-        break;
-    default:
-        break;
-    }
-}
-
-void UpdateState(void) {
-    switch (state.mode)
-    {
-    case GM_FIRST:
-        UpdateFirst();
-        break;
-    case GM_TITLE:
-        UpdateTitle();
-        break;
-    case GM_GAME:
-        UpdateGame();
-        break;
-    case GM_SAVE:
-        UpdateSave();
-        break;
-    case GM_GAMEOVER:
-        UpdateOver();
-        break;
-    case GM_WIN:
-        UpdateWin();
         break;
     default:
         break;
