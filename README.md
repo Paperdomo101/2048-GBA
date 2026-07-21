@@ -1,4 +1,4 @@
-<img src="graphics/titlebg0.png" alt="drawing" width="320"/>
+<img src="graphics/titlebg0.png" alt="drawing" width="480"/>
 
 A port of 2048 for the GameBoy Advance [hosted on itch.io here](https://basil-termini.itch.io/2048-advance)
 
