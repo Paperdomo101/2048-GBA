@@ -59,9 +59,6 @@ void some_fn( void )  '<- explicit void parameter'
     the_code_in_question();
 }
 ``` 
-#### 
-```c
-```
 
 ## Adding Scenes
 
