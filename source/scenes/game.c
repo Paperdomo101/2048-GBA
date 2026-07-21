@@ -820,13 +820,25 @@ void update_scene_game( void )
     }
 
 
+
     if (!is_move_possible())
         lose_freeze_timer++;
+
+    if (lose_freeze_timer > 80)
+        set_scene( SCENE_LOSE );
+
+    if (win_freeze_timer > 0)
+    {
+        if (win_freeze_timer > 50)
+            set_scene( SCENE_WIN );
+        else
+            ++win_freeze_timer;
+    }
 
     if (input_delay > 0)
         --input_delay;
 
-    if (fade_ended)
+    if (fade_ended && win_freeze_timer <= 0)
     {
         if (key_hit( KEY_SELECT ))
         {
@@ -855,22 +867,21 @@ void update_scene_game( void )
             pal_bg_mem[38] = pal_bg_mem[5];
             pal_bg_mem[39] = pal_bg_mem[5];
         }
+
+        if (key_released( KEY_DIR ))
+        {
+            last_slide_direction = 0;
+            calculate_used();
+        }
+
+        if (key_repeat( KEY_UP ))    slide_in_direction( UP );
+        else
+        if (key_repeat( KEY_DOWN ))  slide_in_direction( DOWN );
+
+        if (key_repeat( KEY_LEFT ))  slide_in_direction( LEFT );
+        else
+        if (key_repeat( KEY_RIGHT )) slide_in_direction( RIGHT );
     }
-
-
-    if (key_released( KEY_DIR ))
-    {
-        last_slide_direction = 0;
-        calculate_used();
-    }
-
-    if (key_repeat( KEY_UP ))    slide_in_direction( UP );
-    else
-    if (key_repeat( KEY_DOWN ))  slide_in_direction( DOWN );
-
-    if (key_repeat( KEY_LEFT ))  slide_in_direction( LEFT );
-    else
-    if (key_repeat( KEY_RIGHT )) slide_in_direction( RIGHT );
 
 
     if (spawn_random_square && anim_duration != ANIM_SLIDE_DURATION)
@@ -899,20 +910,12 @@ void update_scene_game( void )
 
     animate_squares();
 
-    if (lose_freeze_timer > 80)
-        set_scene( SCENE_LOSE );
-
-    if (win_freeze_timer > 0)
-    {
-        if (win_freeze_timer > 50)
-            set_scene( SCENE_WIN );
-        else
-            ++win_freeze_timer;
-    }
 
 #ifdef _DEBUG
-    if (key_hit( KEY_L | KEY_R ))
-        set_scene( key_hit(KEY_R) ? SCENE_LOSE : SCENE_WIN );
+    if (key_hit( KEY_L ))
+        set_scene( SCENE_LOSE );
+    if (key_hit( KEY_R ))
+        win_freeze_timer = 1;
 #endif
 
     sort_squares();

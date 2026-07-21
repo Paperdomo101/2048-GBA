@@ -22,6 +22,9 @@ cmake --build build
 
 ## Changelog
 
+### v1.3.1
+* Fixed a bug allowing input when 2048 has been achieved
+
 ### v1.3
 + Added nob build system alongside CMake
 + Separated score logic out from gameplay code into [score.c](source/score.c)
