@@ -1,30 +1,77 @@
-#include <stdlib.h>
-#include <string.h>
+#include <global.h>
 
-#include "global.h"
-#include "soundbank_bin.h"
+#include <soundbank.h>
+#include <soundbank_bin.h>
 
-int main() {
-    State *state = GetState();
+int main( void )
+{
+    load_state();
 
-    mmInitDefault((mm_addr)soundbank_bin, 8);
+    mmInitDefault( (mm_addr)soundbank_bin, 8 );
 
-    irq_init(NULL);
+    irq_init( NULL );
 
-    irq_set(II_VBLANK, mmVBlank, 0);
-    irq_enable(II_VBLANK);
+    irq_set( II_VBLANK, mmVBlank, 0 );
+    irq_enable( II_VBLANK );
 
-    LoadState(state);
+    set_scene( SCENE_FIRST );
 
-    SetMode(GM_FIRST);
-
-    // main loop
-    while (1) {
+    for (;;)
+    {
         mmFrame();
         key_poll();
-        state->update();
+
+        update_scene();
         VBlankIntrWait();
     }
 
-    return 0;
+    exit( EXIT_SUCCESS );
 }
+
+inline
+void set_scene( Scenes scene )
+{
+    /*----------------------------------
+            actual scene change occurs |
+            at the top of update_scene |
+            next frame                */
+    state.next_scene = scene;
+}
+
+inline
+void update_scene( void )
+{
+    if (state.scene != state.next_scene) {
+
+        state.last_scene = state.scene;
+        state.scene = state.next_scene;
+
+        switch (state.scene) {
+            #define x(ENUM, FUNC) case SCENE_##ENUM: init_scene_##FUNC(); break;
+            SCENE_LIST
+            #undef x
+            case SCENE_NULL: case SCENE__MAX__: break;
+        }
+    }
+
+    switch (state.scene) {
+        #define x(ENUM, FUNC) case SCENE_##ENUM: update_scene_##FUNC(); break;
+        SCENE_LIST
+        #undef x
+        case SCENE_NULL: case SCENE__MAX__: break;
+    }
+}
+
+Global_State state = { 0 };
+
+Global_Sfx sfx = {
+#define x( generated, member )             \
+    .member = {                            \
+        .id = SFX_##generated,             \
+        .rate = (int)(1.0f * (1 << 10)),   \
+        .volume = 255,                     \
+        .panning = 127,                    \
+    },
+    SFX_LIST
+#undef x
+};

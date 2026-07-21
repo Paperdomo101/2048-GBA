@@ -14,46 +14,69 @@ message(STATUS "Build type is set to ${CMAKE_BUILD_TYPE}.")
 
 # exe
 add_executable(2048
-	source/first.c
-	source/game.c
-	source/global.h
+	include/global.h
 	source/main.c
-	source/over.c
-	source/save.c
-	source/state.c
+	source/score.c
 	source/storage.c
-	source/title.c
-	source/win.c)
+	source/scenes/first.c
+	source/scenes/game.c
+	source/scenes/lose.c
+	source/scenes/save.c
+	source/scenes/title.c
+	source/scenes/win.c)
 target_compile_features(2048 PRIVATE c_std_11)
 target_compile_options(2048 PRIVATE
 	-Wall -Wextra
 	$<$<CONFIG:Release,RelWithDebInfo>:-mlong-calls -fomit-frame-pointer -ffast-math>)
+target_include_directories(2048 PRIVATE include)
 
-# gfx
-grit_add_binary_target(sprites graphics/sprites.png NO_MAP OPTIONS -Mh4 -Mw4)
-grit_add_binary_target(score graphics/score.png NO_PALETTE NO_MAP)
+# gfx)
 
-grit_add_binary_target(bg0 graphics/bg0.png OPTIONS -mR4)
-grit_add_binary_target(titlebg0 graphics/titlebg0.png DEPTH 8 OPTIONS -mLs -mR8)
+find_program(GRIT grit REQUIRED)
 
-grit_add_binary_target(gameover graphics/gameover.png NO_PALETTE NO_MAP OPTIONS -Mh4 -Mw8)
-grit_add_binary_target(savescreen graphics/savescreen.png NO_PALETTE OPTIONS -mLs -mR4)
-grit_add_binary_target(youwin graphics/youwin.png NO_PALETTE NO_MAP OPTIONS -Mh4 -Mw8)
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/graphics")
 
-dkp_add_embedded_binary_library(2048-graphics
-	bg0
-	gameover
-	savescreen
-	score
-	sprites
-	titlebg0
-	youwin)
+function(add_graphics TARGET INPUT)
+    get_filename_component(NAME "${INPUT}" NAME_WE)
+    get_filename_component(DIR  "${INPUT}" DIRECTORY)
+
+    set(OUTDIR "${CMAKE_CURRENT_BINARY_DIR}/graphics")
+    set(HEADER "${OUTDIR}/${NAME}.h")
+    set(ASM    "${OUTDIR}/${NAME}.s")
+
+    add_custom_command(
+        OUTPUT
+            "${HEADER}"
+            "${ASM}"
+        COMMAND ${GRIT}
+            "${CMAKE_CURRENT_SOURCE_DIR}/${INPUT}"
+            -fts
+            -o "${OUTDIR}/${NAME}"
+        DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/${INPUT}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/${DIR}/${NAME}.grit"
+        COMMENT "Generating ${NAME}"
+        VERBATIM
+    )
+
+    target_sources(${TARGET} PRIVATE "${ASM}")
+    set_source_files_properties("${ASM}" PROPERTIES GENERATED TRUE)
+endfunction()
+
+add_graphics(2048 graphics/bg0.png)
+add_graphics(2048 graphics/gameover.png)
+add_graphics(2048 graphics/savescreen.png)
+add_graphics(2048 graphics/score.png)
+add_graphics(2048 graphics/sprites.png)
+add_graphics(2048 graphics/titlebg0.png)
+add_graphics(2048 graphics/youwin.png)
 
 # sfx
 mm_add_soundbank_target(soundbank
 	HEADER "soundbank.h"
 	INPUTS
 		audio/big_merge.wav
+		audio/huge_merge.wav
 		audio/lose.wav
 		audio/merge.wav
 		audio/save.wav
@@ -63,14 +86,14 @@ mm_add_soundbank_target(soundbank
 		audio/start.wav
 		audio/win.wav)
 dkp_add_embedded_binary_library(2048-sounds soundbank)
-target_include_directories(2048-sounds INTERFACE "${CMAKE_CURRENT_BINARY_DIR}")
+target_include_directories(2048-sounds INTERFACE "${CMAKE_CURRENT_BINARY_DIR}" )
 
 # libs
 add_library(maxmod STATIC IMPORTED)
 set_target_properties(maxmod PROPERTIES
 	INTERFACE_INCLUDE_DIRECTORIES "$ENV{DEVKITPRO}/libgba/include"
 	IMPORTED_LOCATION "$ENV{DEVKITPRO}/libgba/lib/libmm.a")
-target_link_libraries(2048 PRIVATE 2048-graphics 2048-sounds maxmod)
+target_link_libraries(2048 PRIVATE 2048-sounds maxmod)
 
 # debug
 dkp_target_generate_symbol_list(2048)
